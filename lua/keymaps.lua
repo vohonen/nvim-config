@@ -14,6 +14,10 @@ vim.api.nvim_set_keymap('n', '<C-v>', '"+P', { noremap = false, silent = true })
 -- close vertically split buffers without removing the split 
 vim.api.nvim_set_keymap('n', '<leader>bd', ':bp<bar>vsp<bar>bn<bar>bd<CR>', { noremap = true, silent = true })
 
+-- go to the end of the file and move line to the center of the screen
+-- workaround because the scrolloff option isn't working
+vim.api.nvim_set_keymap('n', '<leader><S-g>', '<S-g>zz', { noremap = true, silent = true })
+
 -- better window movement
 vim.api.nvim_set_keymap('n', '<S-h>', '<C-w>h', { silent = true })
 vim.api.nvim_set_keymap('n', '<S-j>', '<C-w>j', { silent = true })
@@ -33,7 +37,7 @@ vim.api.nvim_set_keymap('n', '<CR>', 'o<Esc>k', { noremap = true, silent = true 
 vim.api.nvim_set_keymap('n', '<leader><CR>', 'O<Esc>j', { noremap = true, silent = true })
 
 -- save and quit with leader
-vim.api.nvim_set_keymap('n', '<Leader>ww', ':w<CR>', {noremap = true})
+vim.api.nvim_set_keymap('n', '<Leader>w', ':w<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>wq', ':wq<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>wa', ':wqa<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>qq', ':q!<CR>', {noremap = true})
