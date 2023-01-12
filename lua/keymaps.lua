@@ -25,8 +25,8 @@ vim.api.nvim_set_keymap('n', '<S-k>', '<C-w>k', { silent = true })
 vim.api.nvim_set_keymap('n', '<S-l>', '<C-w>l', { silent = true })
 
 -- insert and append one character in normal mode
-vim.api.nvim_set_keymap('n', ',i', 'i_<Esc>r', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', ',a', 'a_<Esc>r', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', ',i', 'i,<Esc>r', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', ',a', 'a,<Esc>r', { noremap = true, silent = true })
 
 -- tab switch buffers
 vim.api.nvim_set_keymap('n', '<TAB>', ':bnext<CR>', { noremap = true, silent = true })
