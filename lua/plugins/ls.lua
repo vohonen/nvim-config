@@ -3,11 +3,14 @@
 -- https://github.com/mjlbach/defaults.nvim/blob/master/init.lua
 -- https://github.com/neovim/nvim-lspconfig#suggested-configuration 
 local nvim_lsp = require('lspconfig')
-vim.keymap.set('n', '<space>e', vim.diagnostic.open_float)
+-- virtual text off by default, use key bindings to show floating text
+vim.diagnostic.config({virtual_text = false})
+vim.keymap.set('n', '<leader>tt', vim.diagnostic.open_float)
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev)
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next)
-vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist)
+vim.keymap.set('n', '<leader>tl', vim.diagnostic.setloclist)
 
+-- some lsp key bindings from the internet
 -- local on_attach = function(_, bufnr)
 --   vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
 
@@ -25,10 +28,6 @@ vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist)
 --   vim.api.nvim_buf_set_keymap(bufnr, 'n', 'gr', '<cmd>lua vim.lsp.buf.references()<CR>', opts)
 --   vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>ca', '<cmd>lua vim.lsp.buf.code_action()<CR>', opts)
 --   -- vim.api.nvim_buf_set_keymap(bufnr, 'v', '<leader>ca', '<cmd>lua vim.lsp.buf.range_code_action()<CR>', opts)
---   vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>e', '<cmd>lua vim.lsp.diagnostic.show_line_diagnostics()<CR>', opts)
---   vim.api.nvim_buf_set_keymap(bufnr, 'n', '[d', '<cmd>lua vim.lsp.diagnostic.goto_prev()<CR>', opts)
---   vim.api.nvim_buf_set_keymap(bufnr, 'n', ']d', '<cmd>lua vim.lsp.diagnostic.goto_next()<CR>', opts)
---   vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>q', '<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>', opts)
 --   vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>so', [[<cmd>lua require('telescope.builtin').lsp_document_symbols()<CR>]], opts)
 --   vim.cmd [[ command! Format execute 'lua vim.lsp.buf.formatting()' ]]
 -- end
