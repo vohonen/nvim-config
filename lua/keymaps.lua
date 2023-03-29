@@ -47,9 +47,14 @@ vim.api.nvim_set_keymap('n', '<Leader>qa', ':qa!<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>e', ':NvimTreeToggle<CR>', {noremap = true})
 
 -- Git mappings
+vim.api.nvim_set_keymap('n', '<Leader>gg', ':G <CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>gaa', ':G add .<CR>', {noremap = true})
+vim.api.nvim_set_keymap('n', '<Leader>gaf', ':G add %<CR>', {noremap = true})
+vim.api.nvim_set_keymap('n', '<Leader>gd', ':G diff<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>gc', ':G commit<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>gp', ':G push<CR>', {noremap = true})
+vim.api.nvim_set_keymap('n', '<Leader>gll', ':G log<CR>', {noremap = true})
+vim.api.nvim_set_keymap('n', '<Leader>glp', ':G log -p<CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>gaw', ':G add .<bar> :G commit <CR>', {noremap = true})
 
 -- quote and bracket completion
