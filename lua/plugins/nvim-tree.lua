@@ -8,7 +8,6 @@ nvim_tree.setup {
   -- on_attach = "disable",
   disable_netrw = true,
   hijack_netrw = true,
-  open_on_setup = false,
   open_on_tab = false,
   hijack_cursor = false,
   update_cwd = true,
