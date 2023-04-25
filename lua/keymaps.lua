@@ -46,6 +46,10 @@ vim.api.nvim_set_keymap('n', '<Leader>qa', ':qa!<CR>', {noremap = true})
 -- nvim-tree toggle
 vim.api.nvim_set_keymap('n', '<Leader>e', ':NvimTreeToggle<CR>', {noremap = true})
 
+-- move down a directory
+vim.api.nvim_set_keymap('n', '<Leader>.', ':cd ..<CR>', {noremap = true})
+
+
 -- Git mappings
 vim.api.nvim_set_keymap('n', '<Leader>gg', ':G <CR>', {noremap = true})
 vim.api.nvim_set_keymap('n', '<Leader>gaa', ':G add .<CR>', {noremap = true})
@@ -77,6 +81,9 @@ vim.api.nvim_set_keymap('n', '<leader>mpat',
 vim.api.nvim_set_keymap('n', '<leader>mdb',
 	':!g++ -ggdb -O0 -Werror -Wall -fsanitize=address --pedantic -std=c++17 -march=native -fopenmp -o %:r.db %<CR>',
 	{ noremap = true, silent = true })
+-- for PPC course in aalto
+vim.api.nvim_set_keymap('n', '<leader>mpr', ':!./grading --remote test<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>mpp', ':!./grading test<CR>', { noremap = true, silent = true })
 
 -- shortcut to show date
 vim.api.nvim_set_keymap('n', '<leader>da', ':!date<CR>', { noremap = true})
