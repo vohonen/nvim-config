@@ -96,6 +96,12 @@ nvim_tree.setup {
     enable = true,
     auto_open = true,
   },
+  actions = {
+		change_dir = {
+			enable = true,
+			global = true,
+		},
+	},
   diagnostics = {
     enable = true,
     icons = {
