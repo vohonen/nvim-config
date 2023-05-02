@@ -43,9 +43,10 @@ nvim_tree.setup {
       list = {
         { key = "l", action = "edit" },
         { key = "h", action = "close_node" },
+        { key = ",", action = "CD" },
         { key = "v", action = "vsplit" },
-		-- remove default mapping of system_open
         { key = "s", action = "split" },
+        { key = "Z", action = "system_open" },
       },
     },
     number = false,
