@@ -83,6 +83,7 @@ vim.api.nvim_set_keymap('n', '<leader>mdb',
 	{ noremap = true, silent = true })
 -- for PPC course in aalto
 vim.api.nvim_set_keymap('n', '<leader>mpr', ':!./grading --remote test<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>mpb', ':!./grading --remote benchmark<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>mpp', ':!./grading test<CR>', { noremap = true, silent = true })
 
 -- shortcut to show date
