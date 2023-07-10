@@ -1,4 +1,8 @@
 
+-- Mason stuff per https://github.com/williamboman/mason-lspconfig.nvim#setup 
+require("mason").setup()
+require("mason-lspconfig").setup()
+
 -- a match of
 -- https://github.com/mjlbach/defaults.nvim/blob/master/init.lua
 -- https://github.com/neovim/nvim-lspconfig#suggested-configuration 

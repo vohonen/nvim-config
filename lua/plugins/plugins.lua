@@ -49,6 +49,9 @@ require('packer').startup(function()
 	use {'tpope/vim-rhubarb'} 						-- access files in Github
 
 	-- LSP packages
+	use {'williamboman/mason.nvim',					-- interface for managing LSP
+		run = ":MasonUpdate"}					
+    use {'williamboman/mason-lspconfig.nvim'}		-- wrapper between Mason and lspconfig
 	use {'neovim/nvim-lspconfig'}					-- configs for LSP client
 	use {'williamboman/nvim-lsp-installer'} 		-- LSP install commands & GUI
 
