@@ -1,5 +1,7 @@
 # Neovim configuration
 
+[Official installation instructions](https://github.com/neovim/neovim/wiki/Installing-Neovim)
+
 Sadly, at the moment the `nvim` is not maintained very attentively in `apt` and hence a PPA should be used if one does not want to install manually. Unfortunately, the stable PPA is also practically buried, so the [unstable PPA](https://launchpad.net/~neovim-ppa/+archive/ubuntu/unstable) must be used.
 
 First, check that you can use `add-apt-repository` by installing the required package:
