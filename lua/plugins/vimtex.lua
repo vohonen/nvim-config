@@ -6,7 +6,7 @@ vim.g.vimtex_quickfix_mode = 0
 
 vim.cmd [[
 	let g:vimtex_compiler_latexmk = {
-    \ 'build_dir' : 'build',
+    \ 'out_dir' : 'build',
     \}	
 ]]
 
