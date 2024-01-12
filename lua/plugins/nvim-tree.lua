@@ -123,7 +123,6 @@ nvim_tree.setup {
   },
   view = {
 	adaptive_size = true,
-    hide_root_folder = false,
     side = "left",
     number = false,
     relativenumber = false,
