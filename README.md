@@ -36,3 +36,7 @@ git clone git@github.com:vohonen/nvim-config.git nvim
 ```
 
 To ensure that the plugins work properly, first comment out all plugins from `init.lua` file except plugins/plugins (which includes Packer configuration) and then run `:PackerInstall` to get everything installed. Then, one should be able to require all plugins, and they should run smoothly.
+
+The command `:checkhealth` is useful if some difficult errors arise.
+
+If `nvim-treesitter` breaks with some filetypes instead of others, try `:TSUpdate <filetype>`.
