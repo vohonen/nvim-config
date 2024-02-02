@@ -34,6 +34,11 @@ Finally, configure the software by cloning the repo to local configuration direc
 cd ~/.config
 git clone git@github.com:vohonen/nvim-config.git nvim
 ```
+For clipboard integration, install also `xclip`
+```shell
+sudo apt-get update
+sudo apt-get install xclip
+```
 
 To ensure that the plugins work properly, first comment out all plugins from `init.lua` file except plugins/plugins (which includes Packer configuration) and then run `:PackerInstall` to get everything installed. Then, one should be able to require all plugins, and they should run smoothly.
 
