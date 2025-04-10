@@ -77,7 +77,7 @@ local plugins = {
 		build = ":MasonUpdate"},					
      {'williamboman/mason-lspconfig.nvim'},		-- wrapper between Mason and lspconfig
 	 {'neovim/nvim-lspconfig'},					-- configs for LSP client
-	 {'williamboman/nvim-lsp-installer'},		-- LSP install commands & GUI
+	 -- {'williamboman/nvim-lsp-installer'},		-- LSP install commands & GUI
 
 	-- autocompletion
 	 {'hrsh7th/nvim-cmp'}, 						-- autocompletion plugin
