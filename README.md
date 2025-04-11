@@ -29,6 +29,18 @@ sudo update-alternatives --install /usr/bin/editor editor /usr/bin/nvim 60
 sudo update-alternatives --config editor
 ```
 
+Some of the packages require Node and `nvim-treesitter` requires an extra package for TeX formatting. Install these with 
+```shell
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g tree-sitter-cli
+```
+
+For clipboard integration, install also `xclip`
+```shell
+sudo apt-get update
+sudo apt-get install xclip
+```
 
 Finally, configure the software by cloning the repo to local configuration directory via 
 
@@ -36,14 +48,9 @@ Finally, configure the software by cloning the repo to local configuration direc
 cd ~/.config
 git clone git@github.com:vohonen/nvim-config.git nvim
 ```
-For clipboard integration, install also `xclip`
-```shell
-sudo apt-get update
-sudo apt-get install xclip
-```
 
-To ensure that the plugins work properly, first comment out all plugins from `init.lua` file except plugins/plugins (which includes Packer configuration) and then run `:PackerInstall` to get everything installed. Then, one should be able to require all plugins, and they should run smoothly.
+Lazy should install all packages automatically. The command `:checkhealth` is useful if some difficult errors arise.
 
-The command `:checkhealth` is useful if some difficult errors arise.
+Install prefered language servers, linting etc. with `:Mason`.
 
 If `nvim-treesitter` breaks with some filetypes instead of others, try `:TSUpdate <filetype>`.
