@@ -1,25 +1,4 @@
 
------------------------- packer setup ------------------------
-
--- automatically ensure that packer.nvim is installed on any machine you clone your configuration
--- https://github.com/wbthomason/packer.nvim#bootstrapping
--- local fn = vim.fn
--- local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
--- if fn.empty(fn.glob(install_path)) > 0 then
---   fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
---   vim.cmd 'packadd packer.nvim'
--- end
---
--- -- configure Neovim to automatically run :PackerCompile whenever plugins.lua is updated
--- -- end of https://github.com/wbthomason/packer.nvim#quickstart
--- vim.cmd([[
---   augroup packer_user_config
---     autocmd!
---     autocmd BufWritePost plugins.lua source <afile> | PackerCompile
---   augroup end
--- ]])
-
-
 ------------------------ lazy.nvim setup ------------------------
 -- https://lazy.folke.io/installation 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -109,6 +88,9 @@ local plugins = {
 
 require("lazy").setup(plugins, {
 	-- automatically check for plugin updates
-	checker = { enabled = true },
-	})
+	checker = { 
+		enabled = true,
+		notify = false,
+	},
+})
 

@@ -5,10 +5,12 @@ require('nvim-treesitter.configs').setup{
 		"lua",
 		"vim",
 		"vimdoc",
+		"latex",
 		"python",
 		"bibtex",
 		"zathurarc",
-		"matlab"
+		"matlab",
+		"bash"
 	},
 	highlight = {
 		enable = true, -- false will disable the whole extension

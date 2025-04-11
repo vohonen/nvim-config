@@ -91,3 +91,24 @@ cmp.setup({
         { name = 'path' },
     }),
 })
+
+
+-- Diagnostics only in the gutter
+vim.diagnostic.config({
+  virtual_text = false,       -- Disable inline diagnostics
+  signs = true,               -- Show signs in the sign column
+  underline = true,           -- Underline the text with issues
+  update_in_insert = false,   -- Don't update diagnostics in insert mode
+  severity_sort = true,       -- Sort diagnostics by severity
+  float = {                   -- Configure the floating window
+    border = "rounded",
+    source = "always",
+    header = "",
+    prefix = "",
+  },
+})
+
+vim.keymap.set('n', '<leader>tt', vim.diagnostic.open_float)
+vim.keymap.set('n', '[d', vim.diagnostic.goto_prev)
+vim.keymap.set('n', ']d', vim.diagnostic.goto_next)
+vim.keymap.set('n', '<leader>tl', vim.diagnostic.setloclist)
