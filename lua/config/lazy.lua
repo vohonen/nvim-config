@@ -33,9 +33,9 @@ local plugins = {
 
 	-- quality of life packages
 	 {'nvim-treesitter/nvim-treesitter'},			-- better syntax highlighting
-	 {'nvim-telescope/telescope.nvim', 			-- UI to find and open files
-		dependencies = {'nvim-lua/plenary.nvim'}
-	 },	
+	 -- {'nvim-telescope/telescope.nvim', 			-- UI to find and open files
+		-- dependencies = {'nvim-lua/plenary.nvim'}
+	 -- },	
 	 {'tpope/vim-commentary'}, 					-- better commenting
 	 {'lukas-reineke/indent-blankline.nvim'},		-- indentation guides
 	 {'ggandor/lightspeed.nvim'},					-- faster jumping around
