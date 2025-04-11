@@ -2,7 +2,7 @@
 
 [Official installation instructions](https://github.com/neovim/neovim/wiki/Installing-Neovim)
 
-:warning: I haven't ran Packer for a while, so there might have been breaking changes in some plugins' configs since. This is typical, as the plugins are developed quite fast. :warning:
+:warning: Lazy is updating each package automatically, but there might be breaking changes that make this config throw errors. This is typical, as the plugins are developed quite fast. Use `:checkhealth` to diagnose if the config isn't working properly. :warning:
 
 Sadly, at the moment the `nvim` is not maintained very attentively in `apt` and hence a PPA should be used if one does not want to install manually. Unfortunately, the stable PPA is also practically buried, so the [unstable PPA](https://launchpad.net/~neovim-ppa/+archive/ubuntu/unstable) must be used.
 
@@ -32,8 +32,13 @@ sudo update-alternatives --config editor
 Some of the packages require Node and `nvim-treesitter` requires an extra package for TeX formatting. Install these with 
 ```shell
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+sudo apt-get install -y nodejs
 sudo npm install -g tree-sitter-cli
+```
+
+Zathura is my go-to document viewer, see my [zathura-rc](https://github.com/vohonen/zathurarc). Zathura combined with VimTeX requires `xdotool` for forward search 
+```shell
+sudo apt-get install xdotool
 ```
 
 For clipboard integration, install also `xclip`
