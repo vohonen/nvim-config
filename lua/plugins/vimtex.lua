@@ -1,4 +1,8 @@
 
+-- remove vimtex syntax highlighting 
+-- not to overlap with treesitter
+vim.g.vimtex_syntax_enabled = 0
+
 vim.g.vimtex_view_method = 'zathura'
 vim.g.vimtex_quickfix_mode = 0
 vim.g.vimtex_compiler_method = 'latexmk'
