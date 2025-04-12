@@ -108,7 +108,7 @@ vim.diagnostic.config({
   },
 })
 
-vim.keymap.set('n', '<leader>tt', vim.diagnostic.open_float)
+vim.keymap.set('n', '<leader>td', vim.diagnostic.open_float)
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev)
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next)
-vim.keymap.set('n', '<leader>tl', vim.diagnostic.setloclist)
+vim.keymap.set('n', '<leader>ta', vim.diagnostic.setloclist)
