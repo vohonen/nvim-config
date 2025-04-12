@@ -24,27 +24,20 @@ vim.g.maplocalleader = ' '
 
 ------------------------ packages ------------------------
 
--- https://github.com/wbthomason/packer.nvim#quickstart
--- require('packer').startup(function()
-	-- packer can manage itself
-	-- use 'wbthomason/packer.nvim'
-
 local plugins = {
 
 	-- quality of life packages
 	 {'nvim-treesitter/nvim-treesitter'},			-- better syntax highlighting
-	 -- {'nvim-telescope/telescope.nvim', 			-- UI to find and open files
-		-- dependencies = {'nvim-lua/plenary.nvim'}
-	 -- },	
 	 {'tpope/vim-commentary'}, 					-- better commenting
 	 {'lukas-reineke/indent-blankline.nvim'},		-- indentation guides
 	 {'ggandor/lightspeed.nvim'},					-- faster jumping around
 	 {'windwp/nvim-autopairs'},					-- close pairs
 	 {'tpope/vim-surround'},					-- surround text with smth
 	 {'kyazdani42/nvim-web-devicons'},			-- nice icons
-	 {'kyazdani42/nvim-tree.lua'},				-- file explorer
-		-- config = function() require'nvim-tree'.setup {} end
-	-- }
+	 {'kyazdani42/nvim-tree.lua',				-- file explorer
+		lazy = false, 	-- load when needed but prepare early
+  		priority = 100, -- higher loading priority 
+	 },				
 
 	-- git packages
 	 {'tpope/vim-fugitive'}, 						-- git commands with :G
@@ -56,7 +49,6 @@ local plugins = {
 		build = ":MasonUpdate"},					
      {'williamboman/mason-lspconfig.nvim'},		-- wrapper between Mason and lspconfig
 	 {'neovim/nvim-lspconfig'},					-- configs for LSP client
-	 -- {'williamboman/nvim-lsp-installer'},		-- LSP install commands & GUI
 
 	-- autocompletion
 	 {'hrsh7th/nvim-cmp'}, 						-- autocompletion plugin

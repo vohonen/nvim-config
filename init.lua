@@ -1,6 +1,7 @@
-require('options')
-require('keymaps')
-require('config/lazy')
+require('options') 			-- neovim options
+require('keymaps')			-- additional keymaps
+require('config/lazy')		-- lazy plugin manager config
+require('send_code') 		-- send code to a terminal pane
 
 -- plugins
 require('plugins/autopairs')

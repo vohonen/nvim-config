@@ -124,8 +124,8 @@ nvim_tree.setup {
   view = {
 	adaptive_size = true,
     side = "left",
-    number = false,
-    relativenumber = false,
+    number = true,
+    relativenumber = true,
   },
   renderer = {
 		root_folder_modifier = ":t",
