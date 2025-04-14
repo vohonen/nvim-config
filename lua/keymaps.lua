@@ -31,8 +31,8 @@ vim.api.nvim_set_keymap('n', ',a', 'a,<Esc>r', { noremap = true, silent = true }
 -- tab switch buffers
 vim.api.nvim_set_keymap('n', '<TAB>', ':bnext<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<S-TAB>', ':bprevious<CR>', { noremap = true, silent = true })
--- tab overrides <C-i> jump list behaviour, map it to <C-u>
-vim.keymap.set('n', '<C-u>', '<C-i>', { noremap = true })
+-- tab overrides <C-i> jump list behaviour, map it to <C-p>
+vim.keymap.set('n', '<C-p>', '<C-i>', { noremap = true })
 
 -- insert a new line with Enter from normal mode
 vim.api.nvim_set_keymap('n', '<CR>', 'o<Esc>k', { noremap = true, silent = true })
