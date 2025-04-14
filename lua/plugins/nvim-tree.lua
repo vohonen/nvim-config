@@ -117,10 +117,13 @@ nvim_tree.setup {
     ignore_list = {},
   },
   git = {
-    enable = true,
-    ignore = true,
-    timeout = 500,
+	enable = false,
   },
+  -- git = {
+  --   enable = true,
+  --   ignore = true,
+  --   timeout = 500,
+  -- },
   view = {
 	adaptive_size = true,
     side = "left",
@@ -129,18 +132,18 @@ nvim_tree.setup {
   },
   renderer = {
 		root_folder_modifier = ":t",
-		icons = {
-			glyphs = {
-				git = {
-					unstaged = "",
-					staged = "S",
-					unmerged = "",
-					renamed = "➜",
-					deleted = "",
-					untracked = "U",
-					ignored = "◌",
-				},
-			},
-		},
+		-- icons = {
+		-- 	glyphs = {
+		-- 		git = {
+		-- 			unstaged = "",
+		-- 			staged = "S",
+		-- 			unmerged = "",
+		-- 			renamed = "➜",
+		-- 			deleted = "",
+		-- 			untracked = "U",
+		-- 			ignored = "◌",
+		-- 		},
+		-- 	},
+		-- },
   },
 }
