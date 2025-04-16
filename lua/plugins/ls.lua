@@ -53,6 +53,7 @@ vim.keymap.set('n', '<leader>f', function() vim.lsp.buf.format({ async = true })
 -- Set up nvim-cmp
 local cmp = require('cmp')
 local luasnip = require('luasnip')
+require("luasnip.loaders.from_vscode").lazy_load()
 
 cmp.setup({
     snippet = {
