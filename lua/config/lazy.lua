@@ -28,6 +28,7 @@ local plugins = {
 
 	-- quality of life packages
 	 {'nvim-treesitter/nvim-treesitter'},			-- better syntax highlighting
+	 {'nvim-treesitter/nvim-treesitter-textobjects'}, -- better visual highlighting
 	 {'tpope/vim-commentary'}, 					-- better commenting
 	 {'lukas-reineke/indent-blankline.nvim'},		-- indentation guides
 	 {'ggandor/lightspeed.nvim'},					-- faster jumping around
