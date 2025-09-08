@@ -25,8 +25,21 @@ vim.api.nvim_set_keymap('n', '<S-k>', '<C-w>k', { silent = true })
 vim.api.nvim_set_keymap('n', '<S-l>', '<C-w>l', { silent = true })
 
 -- insert and append one character in normal mode
-vim.api.nvim_set_keymap('n', ',i', 'i,<Esc>r', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', ',a', 'a,<Esc>r', { noremap = true, silent = true })
+local function insert_char(mode)
+  local char = vim.fn.getchar()
+  if char == 27 then -- ESC key
+    return
+  end
+  local char_str = vim.fn.nr2char(char)
+  if mode == 'insert' then
+    vim.cmd('normal! i' .. char_str .. '\27') -- \27 is ESC
+  else -- append
+    vim.cmd('normal! a' .. char_str .. '\27')
+  end
+end
+
+vim.keymap.set('n', ',i', function() insert_char('insert') end, { desc = 'Insert one character' })
+vim.keymap.set('n', ',a', function() insert_char('append') end, { desc = 'Append one character' })
 
 -- tab switch buffers
 vim.api.nvim_set_keymap('n', '<TAB>', ':bnext<CR>', { noremap = true, silent = true })
