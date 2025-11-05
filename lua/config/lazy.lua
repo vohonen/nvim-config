@@ -66,6 +66,17 @@ local plugins = {
 	-- latex support
 	 {'lervag/vimtex'},
 
+	-- markdown support 
+	{
+		'iamcco/markdown-preview.nvim',
+		cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+		build = "cd app && npm install",
+		init = function()
+			vim.g.mkdp_filetypes = { "markdown" }
+		end,
+		ft = { "markdown" },
+	},
+
 	-- thematic and visual packages
 	 {'lunarvim/colorschemes'},					-- vimscript colorschemes
 	 {'nvim-lualine/lualine.nvim',				-- fancier statusline
