@@ -50,6 +50,15 @@ local plugins = {
 		build = ":MasonUpdate"},					
      {'williamboman/mason-lspconfig.nvim'},		-- wrapper between Mason and lspconfig
 	 {'neovim/nvim-lspconfig'},					-- configs for LSP client
+	-- linting
+	 {
+		'mfussenegger/nvim-lint',
+		event = { 'BufReadPre', 'BufNewFile' },
+	 },
+	 {
+		'stevearc/conform.nvim',
+		event = { 'BufReadPre', 'BufNewFile' },
+	 },
 
 	-- autocompletion
 	 {'hrsh7th/nvim-cmp'}, 						-- autocompletion plugin

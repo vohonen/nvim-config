@@ -1,8 +1,11 @@
 -- plugins
 require('config/lazy')		-- lazy plugin manager config
+
 require('plugins/autopairs')
 require('plugins/colorschemes')
+require('plugins/conform')
 require('plugins/indent')
+require('plugins/lint')
 require('plugins/ls')
 require('plugins/markdown')
 require('plugins/nvim-cmp')
