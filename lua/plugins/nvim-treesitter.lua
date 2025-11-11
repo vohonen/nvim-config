@@ -1,6 +1,6 @@
 -- install new language parsers with :TSInstall, https://github.com/nvim-treesitter/nvim-treesitter#language-parsers
 -- additional modules for syntax highlighting and indentation, https://github.com/nvim-treesitter/nvim-treesitter#available-modules
-require('nvim-treesitter.configs').setup{
+require("nvim-treesitter.configs").setup({
 	ensure_installed = {
 		"lua",
 		"vim",
@@ -10,7 +10,9 @@ require('nvim-treesitter.configs').setup{
 		"bibtex",
 		"zathurarc",
 		"matlab",
-		"bash"
+		"bash",
+		"markdown",
+		"markdown_inline",
 	},
 	highlight = {
 		enable = true, -- false will disable the whole extension
@@ -18,15 +20,14 @@ require('nvim-treesitter.configs').setup{
 	indent = {
 		enable = true,
 	},
-    textobjects = {
+	textobjects = {
 		select = {
-		    enable = true,
-		    lookahead = true,
-		    keymaps = {
+			enable = true,
+			lookahead = true,
+			keymaps = {
 				["af"] = "@function.outer",
 				["if"] = "@function.inner",
-		    },
+			},
 		},
-    },
-}
-
+	},
+})
