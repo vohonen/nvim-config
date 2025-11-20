@@ -41,6 +41,9 @@ local function insert_char(mode)
 	else -- append
 		vim.cmd("normal! a" .. char_str .. "\27")
 	end
+
+	-- save the buffer
+	vim.cmd("write")
 end
 
 vim.keymap.set("n", ",i", function()
