@@ -1,5 +1,5 @@
 -- set encoding
-vim.o.fileencoding = 'utf-8'
+vim.o.fileencoding = "utf-8"
 
 -- show row and relative row numbers
 vim.wo.number = true
@@ -12,9 +12,9 @@ vim.o.shiftwidth = 4
 -- disable autocommenting newlines
 -- vim.opt.formatoptions = vim.opt.formatoptions - 'cro'
 -- doesn't work still...
-vim.cmd [[
+vim.cmd([[
 	autocmd BufNewFile,Bufread * setlocal formatoptions-=cro
-]]
+]])
 
 -- always show n rows at the top and bottom
 vim.o.scrolloff = 15
@@ -39,11 +39,10 @@ vim.o.smartcase = true
 vim.o.updatetime = 250
 
 -- show sign column for e.g. debugger break points
-vim.wo.signcolumn = 'yes:1'
+vim.wo.signcolumn = "yes:1"
 
 -- a little bit of potential extra colours
 vim.o.termguicolors = true
 
-
 -- treat hyphenated words as a single words
-vim.cmd [[set iskeyword+=-]]
+vim.cmd([[set iskeyword+=-]])
