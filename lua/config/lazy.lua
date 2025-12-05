@@ -41,7 +41,7 @@ local plugins = {
 
 	-- git packages
 	{ "tpope/vim-fugitive" }, -- git commands with :G
-	{ "mhinz/vim-signify" }, -- highlight changes
+	{ "lewis6991/gitsigns.nvim" }, -- highlight changes
 	{ "tpope/vim-rhubarb" }, -- access files in Github
 
 	-- LSP packages

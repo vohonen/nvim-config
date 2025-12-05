@@ -4,6 +4,7 @@ require("config/lazy") -- lazy plugin manager config
 require("plugins/autopairs")
 require("plugins/colorschemes")
 require("plugins/conform")
+require("plugins/gitsigns")
 require("plugins/hover")
 require("plugins/indent")
 require("plugins/lint")
