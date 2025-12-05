@@ -81,10 +81,14 @@ require("gitsigns").setup({
 			gitsigns.blame_line({ full = true })
 		end)
 
-		map("n", "<leader>hd", gitsigns.diffthis)
+		map("n", "<leader>hd", function()
+			gitsigns.diffthis()
+			vim.cmd("wincmd h") -- Move to the left window (the diff buffer)
+		end)
 
 		map("n", "<leader>hD", function()
 			gitsigns.diffthis("~")
+			vim.cmd("wincmd h") -- Move to the left window (the diff buffer)
 		end)
 
 		map("n", "<leader>hQ", function()

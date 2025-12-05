@@ -18,7 +18,7 @@ require('lualine').setup {
 	disabled_filetypes = { 'NvimTree' },
 	},
 
-	-- status line already set 
+	-- status line already set
 	-- options for tabs at the top
 	tabline = {
 		lualine_a = {},
@@ -45,3 +45,14 @@ require('lualine').setup {
 		lualine_z = {}
 	},
 }
+
+-- Refresh tabline when buffers are closed to immediately update the buffer list
+vim.api.nvim_create_autocmd({ "BufDelete", "BufWipeout" }, {
+	callback = function()
+		vim.schedule(function()
+			require("lualine").refresh({
+				scope = "tabline",
+			})
+		end)
+	end,
+})
