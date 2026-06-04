@@ -6,15 +6,8 @@ vim.g.maplocalleader = " "
 -- toggle search highlighting
 vim.api.nvim_set_keymap("n", "<leader>h", ":set hlsearch!<CR>", { noremap = true, silent = true })
 
--- copy, cut and paste with system register
--- vim.api.nvim_set_keymap('v', '<C-c>', '"+y', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('v', '<C-x>', '"+d', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<C-v>', '"+P', { noremap = false, silent = true })
--- add shift to include visual blocks with <C-v>
--- change to y (yank) and p (paste) to work better with alacritty
-vim.api.nvim_set_keymap("v", "<C-S-y>", '"+y', { noremap = true, silent = true })
-vim.api.nvim_set_keymap("v", "<C-S-x>", '"+d', { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<C-S-p>", '"+P', { noremap = false, silent = true })
+-- system clipboard: plain y/d/p use it directly via clipboard=unnamedplus (options.lua),
+-- so the old <C-S-y>/<C-S-x>/<C-S-p> bridge chords are gone
 
 -- close vertically split buffers without removing the split
 vim.api.nvim_set_keymap("n", "<leader>bd", ":bp<bar>vsp<bar>bn<bar>bd<CR>", { noremap = true, silent = true })

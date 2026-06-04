@@ -31,6 +31,10 @@ vim.o.breakindent = true
 -- save undo history
 vim.opt.undofile = true
 
+-- plain y/d/p use the system clipboard directly
+-- (on Linux this needs xclip or wl-clipboard installed)
+vim.opt.clipboard = "unnamedplus"
+
 -- case insensitive searching UNLESS /C or capital in search
 vim.o.ignorecase = true
 vim.o.smartcase = true
