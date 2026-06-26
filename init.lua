@@ -18,3 +18,4 @@ require("plugins/vimtex")
 require("options") -- neovim options
 require("keymaps") -- additional keymaps
 require("send_code") -- send code to a terminal pane
+require("vault") -- productivity vault keymaps
