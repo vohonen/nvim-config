@@ -21,7 +21,13 @@ vim.keymap.set("n", "<leader>ti", function()
 	end
 	f:write("- [ ] " .. item .. "\n")
 	f:close()
-	notify("→ inbox")
+	-- If inbox.md is open in a buffer, reload it so the new line shows immediately and
+	-- a later :w from that buffer can't overwrite the line we just appended on disk.
+	local bufnr = vim.fn.bufnr(path)
+	if bufnr ~= -1 and vim.api.nvim_buf_is_loaded(bufnr) then
+		vim.cmd("checktime " .. bufnr)
+	end
+	notify("→ inbox (saved)")
 end, { desc = "vault: capture to inbox" })
 
 -- <leader>td : open/create today's daily note from the template

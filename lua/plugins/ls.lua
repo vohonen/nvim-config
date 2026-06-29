@@ -20,31 +20,25 @@ require("mason").setup({
 	},
 })
 
--- Initialize mason-lspconfig
-require("mason-lspconfig").setup({
-	-- Auto-install servers that are set up in lspconfig
-	automatic_installation = true,
-	handlers = {
-		function(server_name)
-			require("lspconfig")[server_name].setup({
-				capabilities = capabilities,
-			})
-		end,
-	},
-})
-
--- Set up LSP completion capabilities
+-- LSP completion capabilities (from nvim-cmp). Must be defined before servers are
+-- configured so they can pick it up.
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
--- Minimal LSP setup
--- require("mason-lspconfig").setup_handlers({
---     -- Default handler
---     function(server_name)
---         require("lspconfig")[server_name].setup({
---             capabilities = capabilities,
---         })
---     end,
--- })
+-- mason-lspconfig v2: the old `handlers` / `automatic_installation` options were removed.
+-- Servers are auto-enabled (automatic_enable = true by default) via vim.lsp.enable(),
+-- and shared config is applied with vim.lsp.config() instead of per-server handlers.
+vim.lsp.config("*", { capabilities = capabilities })
+
+require("mason-lspconfig").setup({
+	-- LSP servers auto-installed via Mason. Add more as needed (see :Mason for names).
+	ensure_installed = {
+		"lua_ls", -- Lua (your Neovim config)
+		"pyright", -- Python
+		"marksman", -- Markdown
+		"texlab", -- LaTeX
+		"html", -- HTML
+	},
+})
 
 -- Global keybindings for LSP
 vim.keymap.set("n", "gD", vim.lsp.buf.declaration, { desc = "Go to declaration" })
