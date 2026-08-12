@@ -1,7 +1,9 @@
 -- Productivity vault integration (Obsidian-style plain-markdown vault).
 -- Edited entirely from Neovim; Obsidian not used on this machine.
--- Vault is Dropbox-synced. Change this one path if the vault ever moves.
-local vault = vim.fn.expand("~/Dropbox/productivity-vault")
+-- Vault lives on a plain local path, deliberately off Dropbox: macOS gates
+-- ~/Library/CloudStorage behind Full Disk Access, which the terminal is not given.
+-- Synced via git, not Dropbox. Change this one path if the vault ever moves.
+local vault = vim.fn.expand("~/vault")
 
 local function notify(msg, level)
 	vim.notify(msg, level or vim.log.levels.INFO, { title = "vault" })
@@ -30,9 +32,9 @@ vim.keymap.set("n", "<leader>ti", function()
 	notify("→ inbox (saved)")
 end, { desc = "vault: capture to inbox" })
 
--- <leader>td : open/create today's daily note from the template
-vim.keymap.set("n", "<leader>td", function()
-	local date = os.date("%Y-%m-%d")
+-- open/create the daily note `day_offset` days from today (0 = today, 1 = tomorrow)
+local function open_daily(day_offset)
+	local date = os.date("%Y-%m-%d", os.time() + day_offset * 86400)
 	local path = vault .. "/daily/" .. date .. ".md"
 	if vim.fn.filereadable(path) == 0 then
 		local tmpl = io.open(vault .. "/templates/daily.md", "r")
@@ -50,7 +52,91 @@ vim.keymap.set("n", "<leader>td", function()
 		out:close()
 	end
 	vim.cmd("edit " .. vim.fn.fnameescape(path))
+end
+
+-- <leader>td : open/create today's daily note from the template
+vim.keymap.set("n", "<leader>td", function()
+	open_daily(0)
 end, { desc = "vault: open today's daily note" })
+
+-- <leader>tm : open/create tomorrow's daily note (for EOD next-day planning)
+vim.keymap.set("n", "<leader>tm", function()
+	open_daily(1)
+end, { desc = "vault: open tomorrow's daily note" })
+
+-- End-of-day reminders stay active while Neovim is open.  Re-setting them
+-- replaces the previous pair, which makes correcting a time painless.
+local eod_timers = {}
+
+local function clear_eod_timers()
+	for _, timer in ipairs(eod_timers) do
+		if not timer:is_closing() then
+			timer:stop()
+			timer:close()
+		end
+	end
+	eod_timers = {}
+end
+
+local function macos_notification(message)
+	vim.fn.jobstart({
+		"osascript",
+		"-e",
+		('display notification "%s" with title "End of workday" sound name "Glass"'):format(message),
+	})
+end
+
+local function set_eod_alarms(time)
+	local hour, minute = time:match("^(%d%d):(%d%d)$")
+	hour, minute = tonumber(hour), tonumber(minute)
+	if not hour or not minute or hour > 23 or minute > 59 then
+		notify("Use HH:MM (for example, 17:30)", vim.log.levels.ERROR)
+		return
+	end
+
+	local now = os.time()
+	local today = os.date("*t", now)
+	local target = os.time({
+		year = today.year,
+		month = today.month,
+		day = today.day,
+		hour = hour,
+		min = minute,
+		sec = 0,
+	})
+	local seconds_until_stop = target - now
+	if seconds_until_stop <= 30 * 60 then
+		notify("Choose a stop time more than 30 minutes from now", vim.log.levels.ERROR)
+		return
+	end
+
+	clear_eod_timers()
+	for _, alarm in ipairs({
+		{ delay = seconds_until_stop - 30 * 60, message = "30 minutes left — begin winding down and plan tomorrow." },
+		{ delay = seconds_until_stop - 10 * 60, message = "10 minutes left — close tasks, move leftovers, and stop on time." },
+	}) do
+		local timer = vim.uv.new_timer()
+		timer:start(alarm.delay * 1000, 0, vim.schedule_wrap(function()
+			macos_notification(alarm.message)
+			timer:close()
+		end))
+		table.insert(eod_timers, timer)
+	end
+
+	notify("End-of-day alarms set for " .. time)
+end
+
+vim.api.nvim_create_user_command("EndOfDay", function(opts)
+	set_eod_alarms(opts.args)
+end, { nargs = 1, desc = "Set 30- and 10-minute end-of-day alarms" })
+
+-- <leader>te : prompt for a stop time and set end-of-day alarms
+vim.keymap.set("n", "<leader>te", function()
+	local time = vim.fn.input("End of workday (HH:MM)> ")
+	if time ~= "" then
+		set_eod_alarms(time)
+	end
+end, { desc = "vault: set end-of-day alarms" })
 
 -- <leader>to : open inbox.md directly (to process during a review)
 vim.keymap.set("n", "<leader>to", function()
