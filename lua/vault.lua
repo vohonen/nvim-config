@@ -32,17 +32,20 @@ vim.keymap.set("n", "<leader>ti", function()
 	notify("→ inbox (saved)")
 end, { desc = "vault: capture to inbox" })
 
--- open/create the daily note `day_offset` days from today (0 = today, 1 = tomorrow)
-local function open_daily(day_offset)
-	local date = os.date("%Y-%m-%d", os.time() + day_offset * 86400)
-	local path = vault .. "/daily/" .. date .. ".md"
+-- open/create `path`, seeding it from `templates/<template>` the first time and
+-- substituting {{placeholder}} values into it. Shared by the daily and weekly
+-- notes; `fallback` is the body used if the template file is missing.
+local function open_from_template(path, template, substitutions, fallback)
 	if vim.fn.filereadable(path) == 0 then
-		local tmpl = io.open(vault .. "/templates/daily.md", "r")
-		local body = tmpl and tmpl:read("*a") or ("# " .. date .. "\n")
+		local tmpl = io.open(vault .. "/templates/" .. template, "r")
+		local body = tmpl and tmpl:read("*a") or fallback
 		if tmpl then
 			tmpl:close()
 		end
-		body = body:gsub("{{date:YYYY%-MM%-DD}}", date)
+		for placeholder, value in pairs(substitutions) do
+			body = body:gsub(vim.pesc(placeholder), value)
+		end
+		vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
 		local out = io.open(path, "w")
 		if not out then
 			notify("could not create " .. path, vim.log.levels.ERROR)
@@ -52,6 +55,29 @@ local function open_daily(day_offset)
 		out:close()
 	end
 	vim.cmd("edit " .. vim.fn.fnameescape(path))
+end
+
+-- open/create the daily note `day_offset` days from today (0 = today, 1 = tomorrow)
+local function open_daily(day_offset)
+	local date = os.date("%Y-%m-%d", os.time() + day_offset * 86400)
+	open_from_template(
+		vault .. "/daily/" .. date .. ".md",
+		"daily.md",
+		{ ["{{date:YYYY-MM-DD}}"] = date },
+		"# " .. date .. "\n"
+	)
+end
+
+-- open/create this week's review note, ISO week (e.g. 2026-W37) to match the
+-- `review` zsh alias, which opens the same file.
+local function open_weekly()
+	local week = os.date("%G-W%V")
+	open_from_template(
+		vault .. "/weekly/" .. week .. ".md",
+		"weekly.md",
+		{ ["{{week}}"] = week },
+		"# Weekly review " .. week .. "\n"
+	)
 end
 
 -- <leader>td : open/create today's daily note from the template
@@ -64,30 +90,141 @@ vim.keymap.set("n", "<leader>tm", function()
 	open_daily(1)
 end, { desc = "vault: open tomorrow's daily note" })
 
--- End-of-day reminders stay active while Neovim is open.  Re-setting them
--- replaces the previous pair, which makes correcting a time painless.
-local eod_timers = {}
+-- <leader>tr : open/create this week's review note
+vim.keymap.set("n", "<leader>tr", open_weekly, { desc = "vault: open this week's review note" })
 
-local function clear_eod_timers()
-	for _, timer in ipairs(eod_timers) do
+-- ---------------------------------------------------------------------------
+-- Timers: the end-of-day sequence, a 30-minute Pomodoro, and ad-hoc countdowns.
+--
+-- All three raise the same large, stay-until-acknowledged panel
+-- (scripts/timer-alert.js) rather than a corner notification, because a corner
+-- notification is easy to ignore.
+--
+-- Everything worth tuning — how many end-of-day warnings there are, what each
+-- says, how long a Pomodoro is — lives in ~/vault/nvim/timers.lua, which
+-- <leader>tc creates (pre-filled with the defaults below) and opens. That file
+-- is re-read whenever a timer is set, so a saved edit applies to the next timer
+-- you start; no restart.
+-- ---------------------------------------------------------------------------
+
+local timer_config_path = vault .. "/nvim/timers.lua"
+local alert_script = vim.fn.stdpath("config") .. "/scripts/timer-alert.js"
+
+local timer_defaults = {
+	eod = {
+		emoji = "⏰",
+		emoji_size = 58,
+		heading = "End of workday",
+		button = "I'm wrapping up",
+		sound = "Glass",
+		-- One panel per entry, fired `minutes_before` minutes before the stop
+		-- time you type in. Text before " — " is rendered as the headline.
+		alarms = {
+			{ minutes_before = 60, message = "60 minutes left — finish current tasks and start winding down." },
+			{ minutes_before = 30, message = "30 minutes left — move to writing if not already." },
+			{ minutes_before = 10, message = "10 minutes left — stop and finish with reflection." },
+		},
+	},
+	pomodoro = {
+		minutes = 30,
+		emoji = "🍅",
+		emoji_size = 58,
+		heading = "Pomodoro ended",
+		message = "Time for a break — stand up and look away from the screen.",
+		button = "Break time",
+		sound = "Glass",
+	},
+	timer = {
+		emoji = "⏳",
+		emoji_size = 58,
+		heading = "Timer done",
+		message = "{minutes} {unit} {is} up.",
+		button = "Got it",
+		sound = "Glass",
+	},
+}
+
+local function load_timer_config()
+	local config = vim.deepcopy(timer_defaults)
+	if vim.fn.filereadable(timer_config_path) == 0 then
+		return config
+	end
+	local chunk, load_error = loadfile(timer_config_path)
+	if not chunk then
+		notify("timers.lua: " .. load_error, vim.log.levels.ERROR)
+		return config
+	end
+	local ok, user = pcall(chunk)
+	if not ok or type(user) ~= "table" then
+		notify("timers.lua must return a table — using defaults", vim.log.levels.ERROR)
+		return config
+	end
+	-- A user-supplied alarm list replaces the default one outright: a deep merge
+	-- would keep default entries hanging off the end of a shorter list.
+	local alarms = user.eod and user.eod.alarms
+	config = vim.tbl_deep_extend("force", config, user)
+	if alarms then
+		config.eod.alarms = alarms
+	end
+	return config
+end
+
+-- {minutes} is the timer length; {unit} and {is} agree with it, so a message
+-- reads "1 minute is up" as well as "25 minutes are up".
+local function fill(template, minutes)
+	local singular = minutes == 1
+	local text = (template or "")
+		:gsub("{minutes}", tostring(minutes))
+		:gsub("{unit}", singular and "minute" or "minutes")
+		:gsub("{is}", singular and "is" or "are")
+	return text
+end
+
+local function alert(spec)
+	vim.fn.jobstart({ "osascript", "-l", "JavaScript", alert_script, vim.json.encode(spec) }, { detach = true })
+end
+
+-- Pending timers, kept so they can be replaced or cancelled. "eod" is a slot:
+-- setting a stop time replaces the whole previous sequence, which makes fixing
+-- a mistyped time painless. Pomodoros and ad-hoc timers accumulate.
+local pending = { eod = {}, adhoc = {} }
+
+local function cancel_timers(group)
+	local count = 0
+	for _, timer in ipairs(pending[group]) do
 		if not timer:is_closing() then
 			timer:stop()
 			timer:close()
+			count = count + 1
 		end
 	end
-	eod_timers = {}
+	pending[group] = {}
+	return count
 end
 
-local function macos_notification(message)
-	vim.fn.jobstart({
-		"osascript",
-		"-e",
-		('display notification "%s" with title "End of workday" sound name "Glass"'):format(message),
-	})
+local function schedule(group, delay_seconds, spec)
+	local timer = vim.uv.new_timer()
+	table.insert(pending[group], timer)
+	timer:start(delay_seconds * 1000, 0, vim.schedule_wrap(function()
+		alert(spec)
+		if not timer:is_closing() then
+			timer:close()
+		end
+		for index, entry in ipairs(pending[group]) do
+			if entry == timer then
+				table.remove(pending[group], index)
+				break
+			end
+		end
+	end))
+end
+
+local function ends_at(minutes)
+	return os.date("%H:%M", os.time() + math.floor(minutes * 60))
 end
 
 local function set_eod_alarms(time)
-	local hour, minute = time:match("^(%d%d):(%d%d)$")
+	local hour, minute = time:match("^(%d?%d):(%d%d)$")
 	hour, minute = tonumber(hour), tonumber(minute)
 	if not hour or not minute or hour > 23 or minute > 59 then
 		notify("Use HH:MM (for example, 17:30)", vim.log.levels.ERROR)
@@ -105,38 +242,151 @@ local function set_eod_alarms(time)
 		sec = 0,
 	})
 	local seconds_until_stop = target - now
-	if seconds_until_stop <= 30 * 60 then
-		notify("Choose a stop time more than 30 minutes from now", vim.log.levels.ERROR)
+	if seconds_until_stop <= 0 then
+		notify(time .. " has already passed today", vim.log.levels.ERROR)
 		return
 	end
 
-	clear_eod_timers()
-	for _, alarm in ipairs({
-		{ delay = seconds_until_stop - 30 * 60, message = "30 minutes left — begin winding down and plan tomorrow." },
-		{ delay = seconds_until_stop - 10 * 60, message = "10 minutes left — close tasks, move leftovers, and stop on time." },
-	}) do
-		local timer = vim.uv.new_timer()
-		timer:start(alarm.delay * 1000, 0, vim.schedule_wrap(function()
-			macos_notification(alarm.message)
-			timer:close()
-		end))
-		table.insert(eod_timers, timer)
+	local config = load_timer_config().eod
+	local alarms = vim.deepcopy(config.alarms)
+	table.sort(alarms, function(a, b)
+		return (a.minutes_before or 0) > (b.minutes_before or 0)
+	end)
+
+	cancel_timers("eod")
+	local scheduled, missed = {}, {}
+	for _, alarm in ipairs(alarms) do
+		local delay = seconds_until_stop - (alarm.minutes_before or 0) * 60
+		if delay > 0 then
+			schedule("eod", delay, {
+				emoji = config.emoji,
+				emoji_size = config.emoji_size,
+				heading = config.heading,
+				message = alarm.message,
+				button = config.button,
+				sound = config.sound,
+			})
+			table.insert(scheduled, alarm.minutes_before)
+		else
+			table.insert(missed, alarm.minutes_before)
+		end
 	end
 
-	notify("End-of-day alarms set for " .. time)
+	if #scheduled == 0 then
+		notify("Every end-of-day warning would already have fired before " .. time, vim.log.levels.WARN)
+		return
+	end
+	local message = ("End of workday %s — warnings at %s min"):format(time, table.concat(scheduled, ", "))
+	if #missed > 0 then
+		message = message .. (" (%s min already passed)"):format(table.concat(missed, ", "))
+	end
+	notify(message)
+end
+
+local function start_timer(minutes)
+	minutes = tonumber(minutes)
+	if not minutes or minutes <= 0 then
+		notify("Give a length in minutes (for example, 25)", vim.log.levels.ERROR)
+		return
+	end
+	local config = load_timer_config().timer
+	schedule("adhoc", minutes * 60, {
+		emoji = config.emoji,
+		emoji_size = config.emoji_size,
+		heading = config.heading,
+		message = fill(config.message, minutes),
+		button = config.button,
+		sound = config.sound,
+	})
+	notify(("Timer: %s min, ends %s"):format(minutes, ends_at(minutes)))
+end
+
+local function start_pomodoro()
+	local config = load_timer_config().pomodoro
+	local minutes = tonumber(config.minutes) or 30
+	schedule("adhoc", minutes * 60, {
+		emoji = config.emoji,
+		emoji_size = config.emoji_size,
+		heading = config.heading,
+		message = fill(config.message, minutes),
+		button = config.button,
+		sound = config.sound,
+	})
+	notify(("%s Pomodoro: %s min, ends %s"):format(config.emoji, minutes, ends_at(minutes)))
+end
+
+local function cancel_all_timers()
+	local count = cancel_timers("eod") + cancel_timers("adhoc")
+	notify(count == 0 and "No timers pending" or ("Cancelled %d timer(s)"):format(count))
+end
+
+-- Seed the vault config from the defaults above on first use, so there is a
+-- populated file to edit instead of a blank one to guess at. vim.inspect emits
+-- a valid Lua table literal, which keeps the defaults defined in exactly one
+-- place.
+local function open_timer_config()
+	if vim.fn.filereadable(timer_config_path) == 0 then
+		vim.fn.mkdir(vim.fn.fnamemodify(timer_config_path, ":h"), "p")
+		local out = io.open(timer_config_path, "w")
+		if not out then
+			notify("could not create " .. timer_config_path, vim.log.levels.ERROR)
+			return
+		end
+		out:write(table.concat({
+			"-- Timer settings for the Neovim vault keymaps (<leader>te, tt, tp).",
+			"-- Re-read every time a timer is set: save, and the next timer you start",
+			"-- uses the new values. No restart.",
+			"--",
+			"-- Drop a key to fall back to its built-in default; delete the file to fall",
+			"-- back to all of them. In a message, \" — \" splits headline from detail;",
+			"-- {minutes} is the timer length, and {unit}/{is} agree with it (\"1 minute",
+			"-- is up\", \"25 minutes are up\").",
+			"return " .. vim.inspect(timer_defaults),
+			"",
+		}, "\n"))
+		out:close()
+	end
+	vim.cmd("edit " .. vim.fn.fnameescape(timer_config_path))
 end
 
 vim.api.nvim_create_user_command("EndOfDay", function(opts)
 	set_eod_alarms(opts.args)
-end, { nargs = 1, desc = "Set 30- and 10-minute end-of-day alarms" })
+end, { nargs = 1, desc = "Set the end-of-day warning sequence for a stop time (HH:MM)" })
 
--- <leader>te : prompt for a stop time and set end-of-day alarms
+vim.api.nvim_create_user_command("Timer", function(opts)
+	start_timer(opts.args)
+end, { nargs = 1, desc = "Start a timer for N minutes" })
+
+vim.api.nvim_create_user_command("Pomodoro", start_pomodoro, { desc = "Start a Pomodoro" })
+
+vim.api.nvim_create_user_command("TimersCancel", cancel_all_timers, { desc = "Cancel every pending timer" })
+
+vim.api.nvim_create_user_command("VaultTimers", open_timer_config, { desc = "Edit vault timer settings" })
+
+-- <leader>te : prompt for a stop time and set the end-of-day sequence
 vim.keymap.set("n", "<leader>te", function()
 	local time = vim.fn.input("End of workday (HH:MM)> ")
 	if time ~= "" then
 		set_eod_alarms(time)
 	end
 end, { desc = "vault: set end-of-day alarms" })
+
+-- <leader>tt : prompt for a length in minutes and start a one-shot timer
+vim.keymap.set("n", "<leader>tt", function()
+	local minutes = vim.fn.input("Timer (minutes)> ")
+	if minutes ~= "" then
+		start_timer(minutes)
+	end
+end, { desc = "vault: start a timer for N minutes" })
+
+-- <leader>tp : start a Pomodoro immediately (no prompt)
+vim.keymap.set("n", "<leader>tp", start_pomodoro, { desc = "vault: start a Pomodoro" })
+
+-- <leader>tx : cancel every pending timer
+vim.keymap.set("n", "<leader>tx", cancel_all_timers, { desc = "vault: cancel pending timers" })
+
+-- <leader>tc : open (creating on first use) the vault timer settings
+vim.keymap.set("n", "<leader>tc", open_timer_config, { desc = "vault: edit timer settings" })
 
 -- <leader>to : open inbox.md directly (to process during a review)
 vim.keymap.set("n", "<leader>to", function()
