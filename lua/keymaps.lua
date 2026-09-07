@@ -112,5 +112,10 @@ vim.api.nvim_set_keymap("n", "<leader>mpr", ":!./grading --remote test<CR>", { n
 vim.api.nvim_set_keymap("n", "<leader>mpb", ":!./grading --remote benchmark<CR>", { noremap = true, silent = true })
 vim.api.nvim_set_keymap("n", "<leader>mpp", ":!./grading test<CR>", { noremap = true, silent = true })
 
--- shortcut to show date
-vim.api.nvim_set_keymap("n", "<leader>da", ":!date<CR>", { noremap = true })
+-- insert today's date (YYYY-MM-DD) at/after the cursor
+vim.keymap.set("n", "<leader>di", function()
+	vim.cmd("normal! i" .. os.date("%Y-%m-%d") .. "\27")
+end, { desc = "Insert today's date (YYYY-MM-DD) at cursor" })
+vim.keymap.set("n", "<leader>da", function()
+	vim.cmd("normal! a" .. os.date("%Y-%m-%d") .. "\27")
+end, { desc = "Insert today's date (YYYY-MM-DD) after cursor" })
