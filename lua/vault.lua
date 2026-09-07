@@ -43,7 +43,8 @@ local function open_from_template(path, template, substitutions, fallback)
 			tmpl:close()
 		end
 		for placeholder, value in pairs(substitutions) do
-			body = body:gsub(vim.pesc(placeholder), value)
+			-- escape % in the value; gsub reads it as a capture reference
+			body = body:gsub(vim.pesc(placeholder), (value:gsub("%%", "%%%%")))
 		end
 		vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
 		local out = io.open(path, "w")
@@ -59,19 +60,91 @@ end
 
 -- path of the daily note `day_offset` days from today (0 = today, 1 = tomorrow)
 local function daily_path(day_offset)
-	local date = os.date("%Y-%m-%d", os.time() + day_offset * 86400)
-	return vault .. "/daily/" .. date .. ".md", date
+	-- noon, so a DST shift can never move the date
+	local now = os.date("*t")
+	local time = os.time({ year = now.year, month = now.month, day = now.day, hour = 12 })
+		+ day_offset * 86400
+	local date = os.date("%Y-%m-%d", time)
+	return vault .. "/daily/" .. date .. ".md", date, time
+end
+
+-- the quarter a date falls in, e.g. "2026-Q3"
+local function quarter_of(time)
+	local t = os.date("*t", time)
+	return string.format("%d-Q%d", t.year, math.ceil(t.month / 3))
+end
+
+-- The rocks from that quarter's goal file, stripped of their checkboxes: the
+-- daily note lists them to be looked at, not ticked. Read fresh every time, so
+-- a new quarter needs no template edit.
+local function read_rocks(quarter)
+	local path = vault .. "/goals/" .. quarter .. ".md"
+	if vim.fn.filereadable(path) == 0 then
+		return nil
+	end
+	local rocks, section = {}, nil
+	for _, line in ipairs(vim.fn.readfile(path)) do
+		local heading = line:match("^##%s+(.+)$")
+		if heading then
+			section = heading
+		elseif section and section:match("^Rocks") then
+			local text = line:match("^%s*%d+%.%s*%[.%]%s*(.+)$") or line:match("^%s*%d+%.%s+(.+)$")
+			if text and text:match("%S") then
+				table.insert(rocks, ("%d. %s"):format(#rocks + 1, text))
+			end
+		end
+	end
+	return #rocks > 0 and table.concat(rocks, "\n") or nil
+end
+
+-- The focus areas the last weekly review set for this note's week.
+--
+-- A note for a day in week N reads week N-1's review, because that is where the
+-- focus for week N was written. Friday included: the review written on Friday
+-- morning of week N plans week N+1, so Friday's own note still belongs to the
+-- focus set the week before. Which review it came from is named in the note, so
+-- a skipped week is visible rather than silently stale.
+local function read_week_focus(time)
+	for weeks_back = 1, 3 do
+		local week = os.date("%G-W%V", time - weeks_back * 7 * 86400)
+		local path = vault .. "/weekly/" .. week .. ".md"
+		if vim.fn.filereadable(path) == 1 then
+			local focus, collecting = {}, false
+			for _, line in ipairs(vim.fn.readfile(path)) do
+				if line:match("focus areas") then
+					collecting = true
+				elseif collecting then
+					local text = line:match("^%s+%-%s*(.+)$")
+					if text and text:match("%S") then
+						table.insert(focus, "- " .. text)
+					elseif not line:match("^%s") and line:match("%S") then
+						break
+					end
+				end
+			end
+			-- say it out loud when the newest review is not last week's, so a
+			-- skipped Friday cannot pass its focus off as current
+			local label = weeks_back == 1 and ("from [[%s]]"):format(week)
+				or ("last review [[%s]], %d weeks ago"):format(week, weeks_back)
+			if #focus > 0 then
+				return ("This week (%s):\n%s"):format(label, table.concat(focus, "\n"))
+			end
+			return ("This week (%s, set none):\n-"):format(label)
+		end
+	end
+	return "This week (no review in the last three weeks):\n-"
 end
 
 -- open/create the daily note `day_offset` days from today
 local function open_daily(day_offset)
-	local path, date = daily_path(day_offset)
-	open_from_template(
-		path,
-		"daily.md",
-		{ ["{{date:YYYY-MM-DD}}"] = date },
-		"# " .. date .. "\n"
-	)
+	local path, date, time = daily_path(day_offset)
+	local quarter = quarter_of(time)
+	open_from_template(path, "daily.md", {
+		["{{date:YYYY-MM-DD}}"] = date,
+		["{{quarter}}"] = quarter,
+		["{{rocks}}"] = read_rocks(quarter) or ("_no rocks set in goals/" .. quarter .. ".md_"),
+		["{{week-focus}}"] = read_week_focus(time),
+	}, "# " .. date .. "\n")
 end
 
 -- open/create this week's review note, ISO week (e.g. 2026-W37) to match the
@@ -96,7 +169,10 @@ vim.keymap.set("n", "<leader>tm", function()
 	open_daily(1)
 end, { desc = "vault: open tomorrow's daily note" })
 
--- <leader>tr : open/create this week's review note
+-- <leader>tr : open/create this week's review note. Also a command, because the
+-- `review` zsh alias needs one owner for the template substitution rather than
+-- its own `cp`, which left {{week}} unexpanded in the title.
+vim.api.nvim_create_user_command("VaultWeekly", open_weekly, { desc = "Open this week's review note" })
 vim.keymap.set("n", "<leader>tr", open_weekly, { desc = "vault: open this week's review note" })
 
 -- ---------------------------------------------------------------------------
@@ -505,6 +581,15 @@ local function plan_status(quiet)
 	end
 	local day = parse_daily(path)
 	local capacity, overhead, mit_budget = day_budget(day.meetings)
+
+	if day.mits_listed == 0 then
+		-- headings are the parser's only anchor, so say so rather than
+		-- reporting a confident zero
+		if not quiet then
+			notify("No MITs found — is the `## MITs` heading intact?", vim.log.levels.WARN)
+		end
+		return
+	end
 
 	if not day.planned then
 		if not quiet then
