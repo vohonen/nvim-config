@@ -57,11 +57,17 @@ local function open_from_template(path, template, substitutions, fallback)
 	vim.cmd("edit " .. vim.fn.fnameescape(path))
 end
 
--- open/create the daily note `day_offset` days from today (0 = today, 1 = tomorrow)
-local function open_daily(day_offset)
+-- path of the daily note `day_offset` days from today (0 = today, 1 = tomorrow)
+local function daily_path(day_offset)
 	local date = os.date("%Y-%m-%d", os.time() + day_offset * 86400)
+	return vault .. "/daily/" .. date .. ".md", date
+end
+
+-- open/create the daily note `day_offset` days from today
+local function open_daily(day_offset)
+	local path, date = daily_path(day_offset)
 	open_from_template(
-		vault .. "/daily/" .. date .. ".md",
+		path,
 		"daily.md",
 		{ ["{{date:YYYY-MM-DD}}"] = date },
 		"# " .. date .. "\n"
@@ -101,7 +107,8 @@ vim.keymap.set("n", "<leader>tr", open_weekly, { desc = "vault: open this week's
 -- notification is easy to ignore.
 --
 -- Everything worth tuning — how many end-of-day warnings there are, what each
--- says, how long a Pomodoro is — lives in ~/vault/nvim/timers.lua, which
+-- says, how long a Pomodoro is, how big the day's budget is — lives in
+-- ~/vault/nvim/timers.lua, which
 -- <leader>tc creates (pre-filled with the defaults below) and opens. That file
 -- is re-read whenever a timer is set, so a saved edit applies to the next timer
 -- you start; no restart.
@@ -120,9 +127,8 @@ local timer_defaults = {
 		-- One panel per entry, fired `minutes_before` minutes before the stop
 		-- time you type in. Text before " — " is rendered as the headline.
 		alarms = {
-			{ minutes_before = 60, message = "60 minutes left — finish current tasks and start winding down." },
-			{ minutes_before = 30, message = "30 minutes left — move to writing if not already." },
-			{ minutes_before = 10, message = "10 minutes left — stop and finish with reflection." },
+			{ minutes_before = 30, message = "30 minutes left — close and move tasks, empty the inbox." },
+			{ minutes_before = 10, message = "10 minutes left — stop and reflect." },
 		},
 	},
 	pomodoro = {
@@ -133,6 +139,16 @@ local timer_defaults = {
 		message = "Time for a break — stand up and look away from the screen.",
 		button = "Break time",
 		sound = "Glass",
+	},
+	-- Pomodoro budget for the day. `pomodoros` is a normal 8-hour day with no
+	-- meetings; each meeting hour costs `per_meeting_hour`; `overhead` is the
+	-- closing half hour — moving tasks and emptying the inbox, low bandwidth by
+	-- design — which is not available for MITs.
+	day = {
+		pomodoros = 8,
+		per_meeting_hour = 2,
+		overhead = 1,
+		minimum = 4,
 	},
 	timer = {
 		emoji = "⏳",
@@ -202,11 +218,15 @@ local function cancel_timers(group)
 	return count
 end
 
-local function schedule(group, delay_seconds, spec)
+local function schedule(group, delay_seconds, spec, on_fire)
 	local timer = vim.uv.new_timer()
 	table.insert(pending[group], timer)
 	timer:start(delay_seconds * 1000, 0, vim.schedule_wrap(function()
 		alert(spec)
+		if on_fire then
+			-- never let bookkeeping swallow the alert
+			pcall(on_fire)
+		end
 		if not timer:is_closing() then
 			timer:close()
 		end
@@ -301,6 +321,9 @@ local function start_timer(minutes)
 	notify(("Timer: %s min, ends %s"):format(minutes, ends_at(minutes)))
 end
 
+-- assigned in the day-budget section below; a finished Pomodoro records itself
+local log_pomodoro
+
 local function start_pomodoro()
 	local config = load_timer_config().pomodoro
 	local minutes = tonumber(config.minutes) or 30
@@ -311,7 +334,7 @@ local function start_pomodoro()
 		message = fill(config.message, minutes),
 		button = config.button,
 		sound = config.sound,
-	})
+	}, log_pomodoro)
 	notify(("%s Pomodoro: %s min, ends %s"):format(config.emoji, minutes, ends_at(minutes)))
 end
 
@@ -333,9 +356,10 @@ local function open_timer_config()
 			return
 		end
 		out:write(table.concat({
-			"-- Timer settings for the Neovim vault keymaps (<leader>te, tt, tp).",
-			"-- Re-read every time a timer is set: save, and the next timer you start",
-			"-- uses the new values. No restart.",
+			"-- Settings for the vault's daily flow: the timers (<leader>te, tt, tp) and",
+			"-- the pomodoro budget the day is planned against (<leader>ts).",
+			"-- Re-read every time a timer starts or a plan is checked: save, and the",
+			"-- next one uses the new values. No restart.",
 			"--",
 			"-- Drop a key to fall back to its built-in default; delete the file to fall",
 			"-- back to all of them. In a message, \" — \" splits headline from detail;",
@@ -402,3 +426,266 @@ vim.keymap.set("n", "<leader>tv", function()
 	vim.cmd("cd " .. vim.fn.fnameescape(vault))
 	vim.cmd("NvimTreeOpen")
 end, { desc = "vault: open vault tree" })
+
+-- ---------------------------------------------------------------------------
+-- Day budget: how much work today can actually hold.
+--
+-- The morning writes a capacity (pomodoros, minus meetings, minus the reserved
+-- overhead block) and an estimate against each MIT; <leader>ts checks that the
+-- estimates fit, and saving the daily note warns if they don't. That check is
+-- the whole point: a plan you cannot exceed is not a plan.
+--
+-- A finished Pomodoro records itself in today's note, and <leader>tk rolls the
+-- notes up into tracking/pomodoros.md. Those numbers are for calibrating next
+-- week's estimates, never for grading the day.
+-- ---------------------------------------------------------------------------
+
+local tracking_path = vault .. "/tracking/pomodoros.md"
+
+-- Read the numbers out of a daily note. Every field is optional: notes written
+-- before the budget existed simply have nothing to report.
+local function parse_daily_lines(lines)
+	local out = { pomodoros = 0, mits_listed = 0, mits_done = 0 }
+	local section
+	for _, line in ipairs(lines) do
+		local heading = line:match("^##%s+(.+)$")
+		if heading then
+			section = heading
+		elseif section then
+			if section:match("^Capacity") then
+				local spent = line:match("^%s*[-*]?%s*[Pp]omodoros[^:]*:%s*(%d+)")
+				if spent then
+					out.pomodoros = tonumber(spent)
+				end
+				local meetings = line:match("^%s*[-*]?%s*[Mm]eetings[^:]*:%s*([%d%.]+)")
+				if meetings then
+					out.meetings = tonumber(meetings)
+				end
+			elseif section:match("^MITs") then
+				local box, text = line:match("^%s*%d+%.%s*%[(.)%]%s*(.*)$")
+				if box then
+					out.mits_listed = out.mits_listed + 1
+					if box:lower() == "x" then
+						out.mits_done = out.mits_done + 1
+					end
+					local estimate = text:match("%((%d+)%s*p%)")
+					if estimate then
+						out.planned = (out.planned or 0) + tonumber(estimate)
+					end
+				end
+			end
+		end
+	end
+	return out
+end
+
+local function parse_daily(path)
+	local lines = vim.fn.filereadable(path) == 1 and vim.fn.readfile(path) or {}
+	return parse_daily_lines(lines)
+end
+
+-- capacity, reserved overhead, and what is left for MITs
+local function day_budget(meetings)
+	local day = load_timer_config().day
+	local capacity = (tonumber(day.pomodoros) or 8)
+		- (tonumber(day.per_meeting_hour) or 2) * (tonumber(meetings) or 0)
+	capacity = math.max(capacity, tonumber(day.minimum) or 4)
+	local overhead = tonumber(day.overhead) or 1
+	return capacity, overhead, math.max(capacity - overhead, 0)
+end
+
+-- `quiet` reports only a plan that does not fit, for the on-save check
+local function plan_status(quiet)
+	local path = daily_path(0)
+	if vim.fn.filereadable(path) == 0 then
+		if not quiet then
+			notify("no daily note for today yet — <leader>td", vim.log.levels.WARN)
+		end
+		return
+	end
+	local day = parse_daily(path)
+	local capacity, overhead, mit_budget = day_budget(day.meetings)
+
+	if not day.planned then
+		if not quiet then
+			notify(
+				("%d MITs, no (Np) estimates yet · budget %dp = %d capacity − %d overhead")
+					:format(day.mits_listed, mit_budget, capacity, overhead),
+				vim.log.levels.WARN
+			)
+		end
+		return
+	end
+
+	local over = day.planned - mit_budget
+	if over > 0 then
+		notify(
+			("Planned %dp across %d MITs — %dp over the %dp budget")
+				:format(day.planned, day.mits_listed, over, mit_budget),
+			vim.log.levels.WARN
+		)
+	elseif not quiet then
+		notify(("Planned %dp / %dp · %d MITs · %d spent · %dp overhead reserved")
+			:format(day.planned, mit_budget, day.mits_listed, day.pomodoros, overhead))
+	end
+end
+
+-- A finished Pomodoro bumps the count in today's note. If the note is open the
+-- buffer is edited rather than the file, so an unsaved edit of yours is never
+-- clobbered and you watch the count move. A note written before the Capacity
+-- section existed gets one appended.
+function log_pomodoro()
+	local path = daily_path(0)
+	if vim.fn.filereadable(path) == 0 then
+		notify("Pomodoro not logged: no daily note for today", vim.log.levels.WARN)
+		return
+	end
+
+	local bufnr = vim.fn.bufnr(path)
+	local in_buffer = bufnr ~= -1 and vim.api.nvim_buf_is_loaded(bufnr)
+	local lines = in_buffer and vim.api.nvim_buf_get_lines(bufnr, 0, -1, false) or vim.fn.readfile(path)
+
+	local function put(index, count_lines, replacing)
+		if in_buffer then
+			vim.api.nvim_buf_set_lines(bufnr, index - 1, replacing and index or index - 1, false, count_lines)
+		else
+			if replacing then
+				table.remove(lines, index)
+			end
+			for offset, line in ipairs(count_lines) do
+				table.insert(lines, index + offset - 1, line)
+			end
+			vim.fn.writefile(lines, path)
+		end
+	end
+
+	local count
+	for index, line in ipairs(lines) do
+		local prefix, value = line:match("^(%s*[-*]?%s*[Pp]omodoros[^:]*:%s*)(%d+)")
+		if prefix then
+			count = tonumber(value) + 1
+			put(index, { prefix .. count }, true)
+			break
+		end
+	end
+
+	if not count then
+		count = 1
+		local heading
+		for index, line in ipairs(lines) do
+			if line:match("^##%s+Capacity") then
+				heading = index
+				break
+			end
+		end
+		if heading then
+			local at = #lines + 1
+			for index = heading + 1, #lines do
+				if lines[index]:match("^##%s") then
+					at = index
+					break
+				end
+			end
+			while at - 1 > heading and lines[at - 1]:match("^%s*$") do
+				at = at - 1
+			end
+			put(at, { "- Pomodoros: 1" }, false)
+		else
+			put(#lines + 1, { "", "## Capacity", "", "- Pomodoros: 1" }, false)
+		end
+	end
+
+	local _, _, mit_budget = day_budget(parse_daily_lines(lines).meetings)
+	notify(("🍅 %d / %dp%s"):format(count, mit_budget, in_buffer and " (unsaved)" or ""))
+end
+
+-- Roll the daily notes up into tracking/pomodoros.md. daily/ is deliberately
+-- git-ignored, so this file is the durable record: rows are added or refreshed,
+-- never dropped, and a day whose note is gone keeps its history.
+local function update_tracking()
+	local rows = {}
+	if vim.fn.filereadable(tracking_path) == 1 then
+		for _, line in ipairs(vim.fn.readfile(tracking_path)) do
+			local date = line:match("^|%s*(%d%d%d%d%-%d%d%-%d%d)%s*|")
+			if date then
+				rows[date] = line
+			end
+		end
+	end
+
+	local added, refreshed = 0, 0
+	for _, path in ipairs(vim.fn.glob(vault .. "/daily/*.md", false, true)) do
+		local date = path:match("(%d%d%d%d%-%d%d%-%d%d)%.md$")
+		if date then
+			local day = parse_daily(path)
+			local _, _, mit_budget = day_budget(day.meetings)
+			local function shown(value)
+				return value and tostring(value) or "–"
+			end
+			local line = ("| %s | %s | %s | %s | %s | %d/%d |"):format(
+				date,
+				shown(day.meetings),
+				day.meetings and tostring(mit_budget) or "–",
+				shown(day.planned),
+				day.pomodoros > 0 and tostring(day.pomodoros) or "–",
+				day.mits_done,
+				day.mits_listed
+			)
+			if rows[date] == nil then
+				added = added + 1
+			elseif rows[date] ~= line then
+				refreshed = refreshed + 1
+			end
+			rows[date] = line
+		end
+	end
+
+	local dates = vim.tbl_keys(rows)
+	table.sort(dates)
+	local out = {
+		"# Pomodoros & MITs",
+		"",
+		"Generated from `daily/*.md` by `:VaultTracking` (<leader>tk). Rows are only",
+		"added or refreshed, never dropped — `daily/` is git-ignored, so this file is",
+		"the record that survives a machine.",
+		"",
+		"`budget` is the MIT pomodoros left after the overhead block, `planned` sums",
+		"the `(Np)` estimates, `spent` counts finished Pomodoros. For calibrating the",
+		"next estimate, not for scoring the day.",
+		"",
+		"| date | mtg h | budget | planned | spent | MITs |",
+		"|------|-------|--------|---------|-------|------|",
+	}
+	for _, date in ipairs(dates) do
+		table.insert(out, rows[date])
+	end
+
+	vim.fn.mkdir(vim.fn.fnamemodify(tracking_path, ":h"), "p")
+	vim.fn.writefile(out, tracking_path)
+	notify(("tracking: %d days (%d new, %d refreshed)"):format(#dates, added, refreshed))
+	vim.cmd("edit! " .. vim.fn.fnameescape(tracking_path))
+end
+
+vim.api.nvim_create_user_command("VaultPlan", function()
+	plan_status(false)
+end, { desc = "Check today's MIT estimates against the day budget" })
+
+vim.api.nvim_create_user_command("VaultTracking", update_tracking, { desc = "Update the pomodoro/MIT record" })
+
+-- <leader>ts : does today's plan fit the budget?
+vim.keymap.set("n", "<leader>ts", function()
+	plan_status(false)
+end, { desc = "vault: check today's plan against the budget" })
+
+-- <leader>tk : update and open tracking/pomodoros.md
+vim.keymap.set("n", "<leader>tk", update_tracking, { desc = "vault: update pomodoro tracking" })
+
+-- Saving the daily note warns when the plan does not fit, and stays quiet when
+-- it does — so the check costs nothing on a day that is already reasonable.
+vim.api.nvim_create_autocmd("BufWritePost", {
+	pattern = vault .. "/daily/*.md",
+	desc = "vault: warn when the day is planned over budget",
+	callback = function()
+		plan_status(true)
+	end,
+})
