@@ -62,8 +62,7 @@ end
 local function daily_path(day_offset)
 	-- noon, so a DST shift can never move the date
 	local now = os.date("*t")
-	local time = os.time({ year = now.year, month = now.month, day = now.day, hour = 12 })
-		+ day_offset * 86400
+	local time = os.time({ year = now.year, month = now.month, day = now.day, hour = 12 }) + day_offset * 86400
 	local date = os.date("%Y-%m-%d", time)
 	return vault .. "/daily/" .. date .. ".md", date, time
 end
@@ -297,22 +296,26 @@ end
 local function schedule(group, delay_seconds, spec, on_fire)
 	local timer = vim.uv.new_timer()
 	table.insert(pending[group], timer)
-	timer:start(delay_seconds * 1000, 0, vim.schedule_wrap(function()
-		alert(spec)
-		if on_fire then
-			-- never let bookkeeping swallow the alert
-			pcall(on_fire)
-		end
-		if not timer:is_closing() then
-			timer:close()
-		end
-		for index, entry in ipairs(pending[group]) do
-			if entry == timer then
-				table.remove(pending[group], index)
-				break
+	timer:start(
+		delay_seconds * 1000,
+		0,
+		vim.schedule_wrap(function()
+			alert(spec)
+			if on_fire then
+				-- never let bookkeeping swallow the alert
+				pcall(on_fire)
 			end
-		end
-	end))
+			if not timer:is_closing() then
+				timer:close()
+			end
+			for index, entry in ipairs(pending[group]) do
+				if entry == timer then
+					table.remove(pending[group], index)
+					break
+				end
+			end
+		end)
+	)
 end
 
 local function ends_at(minutes)
@@ -372,7 +375,7 @@ local function set_eod_alarms(time)
 		notify("Every end-of-day warning would already have fired before " .. time, vim.log.levels.WARN)
 		return
 	end
-	local message = ("End of workday %s — warnings at %s min"):format(time, table.concat(scheduled, ", "))
+	local message = ("End of workday %s — notifications at %s min"):format(time, table.concat(scheduled, ", "))
 	if #missed > 0 then
 		message = message .. (" (%s min already passed)"):format(table.concat(missed, ", "))
 	end
@@ -438,9 +441,9 @@ local function open_timer_config()
 			"-- next one uses the new values. No restart.",
 			"--",
 			"-- Drop a key to fall back to its built-in default; delete the file to fall",
-			"-- back to all of them. In a message, \" — \" splits headline from detail;",
-			"-- {minutes} is the timer length, and {unit}/{is} agree with it (\"1 minute",
-			"-- is up\", \"25 minutes are up\").",
+			'-- back to all of them. In a message, " — " splits headline from detail;',
+			'-- {minutes} is the timer length, and {unit}/{is} agree with it ("1 minute',
+			'-- is up", "25 minutes are up").',
 			"return " .. vim.inspect(timer_defaults),
 			"",
 		}, "\n"))
@@ -563,8 +566,7 @@ end
 -- capacity, reserved overhead, and what is left for MITs
 local function day_budget(meetings)
 	local day = load_timer_config().day
-	local capacity = (tonumber(day.pomodoros) or 8)
-		- (tonumber(day.per_meeting_hour) or 2) * (tonumber(meetings) or 0)
+	local capacity = (tonumber(day.pomodoros) or 8) - (tonumber(day.per_meeting_hour) or 2) * (tonumber(meetings) or 0)
 	capacity = math.max(capacity, tonumber(day.minimum) or 4)
 	local overhead = tonumber(day.overhead) or 1
 	return capacity, overhead, math.max(capacity - overhead, 0)
@@ -594,8 +596,12 @@ local function plan_status(quiet)
 	if not day.planned then
 		if not quiet then
 			notify(
-				("%d MITs, no (Np) estimates yet · budget %dp = %d capacity − %d overhead")
-					:format(day.mits_listed, mit_budget, capacity, overhead),
+				("%d MITs, no (Np) estimates yet · budget %dp = %d capacity − %d overhead"):format(
+					day.mits_listed,
+					mit_budget,
+					capacity,
+					overhead
+				),
 				vim.log.levels.WARN
 			)
 		end
@@ -605,13 +611,24 @@ local function plan_status(quiet)
 	local over = day.planned - mit_budget
 	if over > 0 then
 		notify(
-			("Planned %dp across %d MITs — %dp over the %dp budget")
-				:format(day.planned, day.mits_listed, over, mit_budget),
+			("Planned %dp across %d MITs — %dp over the %dp budget"):format(
+				day.planned,
+				day.mits_listed,
+				over,
+				mit_budget
+			),
 			vim.log.levels.WARN
 		)
 	elseif not quiet then
-		notify(("Planned %dp / %dp · %d MITs · %d spent · %dp overhead reserved")
-			:format(day.planned, mit_budget, day.mits_listed, day.pomodoros, overhead))
+		notify(
+			("Planned %dp / %dp · %d MITs · %d spent · %dp overhead reserved"):format(
+				day.planned,
+				mit_budget,
+				day.mits_listed,
+				day.pomodoros,
+				overhead
+			)
+		)
 	end
 end
 
